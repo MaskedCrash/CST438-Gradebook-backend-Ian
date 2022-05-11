@@ -2,6 +2,8 @@ package com.cst438.controllers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.text.SimpleDateFormat;  
+import java.util.Date;  
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -169,15 +171,16 @@ public class GradeBookController {
 			// TODO check that today's date is not past add deadline for the course.
 			Assignment newAssignment = new Assignment();
 			newAssignment.setCourse(course);
-			newAssignment.setName(assignmentDTO.assignmentName);
-			//newAssignment.setDueDate()
+			newAssignment.setName(assignmentDTO.assignmentName);	
+			newAssignment.setDueDate(java.sql.Date.valueOf(assignmentDTO.dueDate));
+			newAssignment.setNeedsGrading(1);
 			Assignment savedAssignment = assignmentRepository.save(newAssignment);
 			
 			//gradebookService.enrollStudent(student_email, student.getName(), course.getCourse_id());
 			
-			
-			assignmentDTO.assignmentId = savedAssignment.getId();
-			return assignmentDTO;
+			AssignmentListDTO.AssignmentDTO result = createAssignmentDTO(newAssignment);
+			//assignmentDTO.assignmentId = savedAssignment.getId();
+			return result;
 		} else {
 			throw  new ResponseStatusException( HttpStatus.BAD_REQUEST, "Assignment addition failed. Assignmentname:"+
 					assignmentDTO.assignmentName+" dueDate:"+assignmentDTO.dueDate+" course:"+course.getTitle());
@@ -185,7 +188,7 @@ public class GradeBookController {
 		
 	}
 	
-	@DeleteMapping("/assignment/{assignment_id}")
+	@DeleteMapping("/assignment/{assignmentId}")
 	@Transactional
 	public void deleteAssignment(  @PathVariable int assignmentId  ) {
 		
@@ -205,7 +208,8 @@ public class GradeBookController {
 	}
 	
 	
-    @PatchMapping("/restaurant/{id}/update")
+    @PutMapping("/assignmentupdate/{assignmentId}")
+    @Transactional
     public Assignment updateAssignmentName(@PathVariable int assignmentId, @RequestBody String newName)
     {
        
@@ -216,8 +220,8 @@ public class GradeBookController {
             
             return assignmentRepository.save(newAssignment);
         } else
-            return null;
-     }
+        	throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "No assignment with that ID number was found." );
+    }
 	
 	
 	private Assignment checkAssignment(int assignmentId, String email) {
@@ -234,6 +238,10 @@ public class GradeBookController {
 		return assignment;
 	}
 	
-	
+	private AssignmentListDTO.AssignmentDTO createAssignmentDTO(Assignment A) {
+		AssignmentListDTO.AssignmentDTO assignmentDTO = new AssignmentListDTO.AssignmentDTO(A.getId(), A.getCourse().getCourse_id(), A.getName(), "\"2022-05-10", A.getCourse().getTitle());
+        
+        return assignmentDTO;
+    }
 
 }
