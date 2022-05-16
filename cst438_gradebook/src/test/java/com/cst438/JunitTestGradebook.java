@@ -204,9 +204,7 @@ public class JunitTestGradebook {
 		// then do an http get request for assignment 1
 		response = mvc.perform(
 				MockMvcRequestBuilders
-			      .post("/assignment")
-			      .content(asJsonString(assignmentDTO))
-			      .contentType(MediaType.APPLICATION_JSON)
+			      .post("/assignment?assignmentName="+assignment.getName()+"&dueDate=2021-09-01&courseID="+TEST_COURSE_ID)
 			      .accept(MediaType.APPLICATION_JSON))
 				.andReturn().getResponse();
 		
