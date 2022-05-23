@@ -26,14 +26,26 @@ public class EnrollmentController {
 	/*
 	 * endpoint used by registration service to add an enrollment to an existing
 	 * course.
+	 * Receive the EnrollmentDTO and update enrollment table.
 	 */
 	@PostMapping("/enrollment")
 	@Transactional
 	public EnrollmentDTO addEnrollment(@RequestBody EnrollmentDTO enrollmentDTO) {
 		
-		//TODO  complete this method in homework 4
+		//Pull the course ID from the enrollmentDTO
+		Course course = courseRepository.findById(enrollmentDTO.course_id).orElse(null);
 		
-		return null;
+		Enrollment enrollment = new Enrollment();
+		
+		//Add extra details.
+		enrollment.setStudentEmail(enrollmentDTO.studentEmail);
+		enrollment.setStudentName(enrollmentDTO.studentName);
+		enrollment.setCourse(course);
+		
+		
+		enrollmentRepository.save(enrollment);
+		
+		return enrollmentDTO;
 		
 	}
 
