@@ -5,6 +5,7 @@ import java.util.List;
 import java.text.SimpleDateFormat;  
 import java.util.Date;  
 
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -160,19 +162,21 @@ public class GradeBookController {
 		
 	}
 	
+	//NOTE: EDITING addAssignment in the gradebook controller class because I need to make it work
+	//with react.js, and having it all be one dto doesn't seem to be possible
 	@PostMapping("/assignment")
 	@Transactional
-	public AssignmentListDTO.AssignmentDTO addAssignment( @RequestBody AssignmentListDTO.AssignmentDTO assignmentDTO  ) { 
+	public AssignmentListDTO.AssignmentDTO addAssignment(@RequestParam String assignmentName, @RequestParam String dueDate, @RequestParam int courseID) { 
 
 		String email = "dwisneski@csumb.edu"; 
-		Course course  = courseRepository.findById(assignmentDTO.courseId).orElse(null);
+		Course course  = courseRepository.findById(courseID).orElse(null);
 		
-		if (assignmentDTO.assignmentName!=null && assignmentDTO.dueDate!=null && course!=null) {
+		if (assignmentName!=null && dueDate!=null && course!=null) {
 			// TODO check that today's date is not past add deadline for the course.
 			Assignment newAssignment = new Assignment();
 			newAssignment.setCourse(course);
-			newAssignment.setName(assignmentDTO.assignmentName);	
-			newAssignment.setDueDate(java.sql.Date.valueOf(assignmentDTO.dueDate));
+			newAssignment.setName(assignmentName);	
+			newAssignment.setDueDate(java.sql.Date.valueOf(dueDate));
 			newAssignment.setNeedsGrading(1);
 			Assignment savedAssignment = assignmentRepository.save(newAssignment);
 			
@@ -183,7 +187,7 @@ public class GradeBookController {
 			return result;
 		} else {
 			throw  new ResponseStatusException( HttpStatus.BAD_REQUEST, "Assignment addition failed. Assignmentname:"+
-					assignmentDTO.assignmentName+" dueDate:"+assignmentDTO.dueDate+" course:"+course.getTitle());
+					assignmentName+" dueDate:"+dueDate+" course:"+course.getTitle());
 		}
 		
 	}

@@ -17,10 +17,19 @@ public class RegistrationServiceREST extends RegistrationService {
 		System.out.println("REST registration service ");
 	}
 	
+	/*
+	 * 
+	 * When teacher does POST to 
+	 *	/course/{course_id}/finalgrades
+	 *	send final grades of all students to Registration backend using CourseDTOG
+	 */
+	
+	
 	@Override
 	public void sendFinalGrades(int course_id , CourseDTOG courseDTO) { 
 		
-		//TODO  complete this method in homework 4
-		
-	}
+		restTemplate.postForEntity(registration_url + "/course/" + courseDTO.course_id,   // URL
+													courseDTO,                             // data to send
+													CourseDTOG.class);                	  // return data type);
+		}
 }
