@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import com.cst438.domain.Assignment;
 import com.cst438.domain.AssignmentListDTO;
@@ -50,10 +52,13 @@ public class GradeBookController {
 	RegistrationService registrationService;
 	
 	// get assignments for an instructor that need grading
+	//AS THIS WAS NOT REQUESTED TO BE CHANGED, IT WILL NOT BE CHANGED.
+	//SHOULD it be changed? Eh. 
+	//Actually, seeing as it has an Email preset, it needs to be changed in order to work.
 	@GetMapping("/gradebook")
-	public AssignmentListDTO getAssignmentsNeedGrading( ) {
+	public AssignmentListDTO getAssignmentsNeedGrading(@AuthenticationPrincipal OAuth2User principal) {
 		
-		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		String email = principal.getAttribute("email");	  // Get the email of the person who has logged in.
 		
 		List<Assignment> assignments = assignmentRepository.findNeedGradingByEmail(email);
 		AssignmentListDTO result = new AssignmentListDTO();
@@ -64,9 +69,10 @@ public class GradeBookController {
 	}
 	
 	@GetMapping("/gradebook/{id}")
-	public GradebookDTO getGradebook(@PathVariable("id") Integer assignmentId  ) {
+	public GradebookDTO getGradebook(@PathVariable("id") Integer assignmentId, @AuthenticationPrincipal OAuth2User principal) {
 		
-		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		String email = principal.getAttribute("email");	  // Get the email of the person who has logged in. Again.
+		
 		Assignment assignment = checkAssignment(assignmentId, email);
 		
 		// get the enrollment for the course
@@ -97,11 +103,11 @@ public class GradeBookController {
 	
 	@PostMapping("/course/{course_id}/finalgrades")
 	@Transactional
-	public void calcFinalGrades(@PathVariable int course_id) {
+	public void calcFinalGrades(@PathVariable int course_id, @AuthenticationPrincipal OAuth2User principal) {
 		System.out.println("Gradebook - calcFinalGrades for course " + course_id);
 		
 		// check that this request is from the course instructor 
-		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		String email = principal.getAttribute("email");	  // We're No Strangers To Love
 		
 		Course c = courseRepository.findById(course_id).orElse(null);
 		if (!c.getInstructor().equals(email)) {
@@ -140,9 +146,10 @@ public class GradeBookController {
 	
 	@PutMapping("/gradebook/{id}")
 	@Transactional
-	public void updateGradebook (@RequestBody GradebookDTO gradebook, @PathVariable("id") Integer assignmentId ) {
+	public void updateGradebook (@RequestBody GradebookDTO gradebook, @PathVariable("id") Integer assignmentId, @AuthenticationPrincipal OAuth2User principal ) {
 		
-		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		String email = principal.getAttribute("email");	  // You know the rules, and so Do I
+		
 		checkAssignment(assignmentId, email);  // check that user name matches instructor email of the course.
 		
 		// for each grade in gradebook, update the assignment grade in database 
@@ -166,12 +173,16 @@ public class GradeBookController {
 	//with react.js, and having it all be one dto doesn't seem to be possible
 	@PostMapping("/assignment")
 	@Transactional
-	public AssignmentListDTO.AssignmentDTO addAssignment(@RequestParam String assignmentName, @RequestParam String dueDate, @RequestParam int courseID) { 
+	public AssignmentListDTO.AssignmentDTO addAssignment(@RequestParam String assignmentName, @RequestParam String dueDate, @RequestParam int courseID, @AuthenticationPrincipal OAuth2User principal) { 
 
-		String email = "dwisneski@csumb.edu"; 
+		String email = principal.getAttribute("email");	  // A full commitment's what I'm thinking of
+
 		Course course  = courseRepository.findById(courseID).orElse(null);
 		
-		if (assignmentName!=null && dueDate!=null && course!=null) {
+		if (!course.getInstructor().equals(email)) {
+			throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "Not Authorized." );
+		}
+		else if (assignmentName!=null && dueDate!=null && course!=null) {
 			// TODO check that today's date is not past add deadline for the course.
 			Assignment newAssignment = new Assignment();
 			newAssignment.setCourse(course);
@@ -181,6 +192,7 @@ public class GradeBookController {
 			Assignment savedAssignment = assignmentRepository.save(newAssignment);
 			
 			//gradebookService.enrollStudent(student_email, student.getName(), course.getCourse_id());
+			
 			
 			AssignmentListDTO.AssignmentDTO result = createAssignmentDTO(newAssignment);
 			//assignmentDTO.assignmentId = savedAssignment.getId();
@@ -194,15 +206,18 @@ public class GradeBookController {
 	
 	@DeleteMapping("/assignment/{assignmentId}")
 	@Transactional
-	public void deleteAssignment(  @PathVariable int assignmentId  ) {
+	public void deleteAssignment(  @PathVariable int assignmentId, @AuthenticationPrincipal OAuth2User principal  ) {
 		
-		String email = "dwisneski@csumb.edu"; 
+		String email = principal.getAttribute("email");	  // You wouldn't get this from any other guy
+
 		// TODO  check that assignment is extant.
 		
 		Assignment newAssignment = assignmentRepository.findById(assignmentId).orElse(null);
+		//Get the course so we can cross-check it.
+		Course course  = newAssignment.getCourse();
 		
 		// TODO 
-		if (email=="dwisneski@csumb.edu") {
+		if (course.getInstructor().equals(email)) {
 			// OK.  drop the course.
 			assignmentRepository.delete(newAssignment); 
 		} else {
@@ -214,17 +229,26 @@ public class GradeBookController {
 	
     @PutMapping("/assignmentupdate/{assignmentId}")
     @Transactional
-    public Assignment updateAssignmentName(@PathVariable int assignmentId, @RequestBody String newName)
+    public Assignment updateAssignmentName(@PathVariable int assignmentId, @RequestBody String newName, @AuthenticationPrincipal OAuth2User principal )
     {
        
-        Assignment newAssignment = assignmentRepository.findById(assignmentId).orElse(null);
+		String email = principal.getAttribute("email");	  // I Just wanna tell you how I'm feelin'
 
-        if (newAssignment!=null) {
+        Assignment newAssignment = assignmentRepository.findById(assignmentId).orElse(null);
+		Course course  = newAssignment.getCourse();
+
+        
+        if (!course.getInstructor().equals(email)) {
+			throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "Not Authorized." );
+		}
+        else if (newAssignment!=null) {
             newAssignment.setName(newName);
             
             return assignmentRepository.save(newAssignment);
-        } else
+        } 
+        else 
         	throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "No assignment with that ID number was found." );
+        
     }
 	
 	
